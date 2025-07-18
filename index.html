@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Аукцион Demo</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<h1>Аукцион Demo</h1>
+
+<div id="loginPage">
+  <h2>Вход</h2>
+  <div class="error" id="loginError"></div>
+  <label for="loginUsername">Логин:</label>
+  <input type="text" id="loginUsername" placeholder="Введите логин" />
+  <label for="loginPassword">Пароль:</label>
+  <input type="password" id="loginPassword" placeholder="Введите пароль" />
+  <button id="loginBtn">Войти</button>
+  <p>Для теста: <b>admin/admin</b> или <b>user/user</b></p>
+</div>
+
+<div id="mainPage" class="hidden">
+  <button id="logoutBtn">Выйти</button>
+  <p>Привет, <span id="currentUser"></span>!</p>
+
+  <div id="filters">
+    <h3>Фильтры</h3>
+    <label>Категория:
+      <select id="filterCategory">
+        <option value="">Все</option>
+        <option value="Категория A">Категория A</option>
+        <option value="Категория B">Категория B</option>
+      </select>
+    </label>
+    <label>Статус:
+      <select id="filterStatus">
+        <option value="">Все</option>
+        <option value="active">Активные</option>
+        <option value="sold">Продано</option>
+      </select>
+    </label>
+  </div>
+
+  <div id="lotsList"></div>
+
+  <div id="adminPanel" class="hidden">
+    <h2>Админ-панель</h2>
+    <h3>Добавить лот</h3>
+    <form id="addLotForm">
+      <input type="text" id="newLotTitle" placeholder="Название" required /><br/>
+      <input type="text" id="newLotCategory" placeholder="Категория" required /><br/>
+      <input type="number" id="newLotPrice" placeholder="Цена" required min="0" /><br/>
+      <select id="newLotStatus" required>
+        <option value="active">Активный</option>
+        <option value="sold">Продано</option>
+      </select><br/>
+      <button type="submit">Добавить лот</button>
+    </form>
+  </div>
+</div>
+
+<script>
+  const users = [
+    { username: 'admin', password: 'admin', role: 'admin' },
+    { username: 'user', password: 'user', role: 'user' }
+  ];
+
+  let lots = [
+    { id: 1, title: 'Лот 1', category: 'Категория A', price: 1000, status: 'active', bids: [], endTime: Date.now() + 1000*60*5 },
+    { id: 2, title: 'Лот 2', category: 'Категория B', price: 2000, status: 'active', bids: [], endTime: Date.now() + 1000*60*10 },
+    { id: 3, title: 'Лот 3', category: 'Категория A', price: 1500, status: 'sold', bids: [], endTime: null }
+  ];
+
+  let currentUser = null;
+
+  const loginPage = document.getElementById('loginPage');
+  const mainPage = document.getElementById('mainPage');
+  const loginError = document.getElementById('loginError');
+  const currentUserSpan = document.getElementById('currentUser');
+  const lotsList = document.getElementById('lotsList');
+  const adminPanel = document.getElementById('adminPanel');
+
+  const loginUsername = document.getElementById('loginUsername');
+  const loginPassword = document.getElementById('loginPassword');
+  const loginBtn = document.getElementById('loginBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
+
+  const filterCategory = document.getElementById('filterCategory');
+  const filterStatus = document.getElementById('filterStatus');
+
+  const addLotForm = document.getElementById('addLotForm');
+  const newLotTitle = document.getElementById('newLotTitle');
+  const newLotCategory = document.getElementById('newLotCategory');
+  const newLotPrice = document.getElementById('newLotPrice');
+  const newLotStatus = document.getElementById('newLotStatus');
+
+  loginBtn.onclick = login;
+  logoutBtn.onclick = logout;
+  filterCategory.onchange = applyFilters;
+  filterStatus.onchange = applyFilters;
+  addLotForm.onsubmit = addLot;
+
+  function login() {
+    const username = loginUsername.value.trim();
+    const password = loginPassword.value;
+    const user = users.find(u => u.username === username && u.password === password);
+    if(user){
+      currentUser = user;
+      loginError.textContent = '';
+      showMainPage();
+    } else {
+      loginError.textContent = 'Неверный логин или пароль';
+    }
+  }
+
+  function logout() {
+    currentUser = null;
+    loginPage.classList.remove('hidden');
+    mainPage.classList.add('hidden');
+    loginUsername.value = '';
+    loginPassword.value = '';
+    lotsList.innerHTML = '';
+  }
+
+  function showMainPage() {
+    loginPage.classList.add('hidden');
+    mainPage.classList.remove('hidden');
+    currentUserSpan.textContent = currentUser.username;
+
+    if(currentUser.role === 'admin'){
+      adminPanel.classList.remove('hidden');
+    } else {
+      adminPanel.classList.add('hidden');
+    }
+
+    applyFilters();
+  }
+
+  function applyFilters() {
+    let filtered = lots;
+
+    const category = filterCategory.value;
+    const status = filterStatus.value;
+
+    // Обновляем статус лотов по таймеру
+    filtered.forEach(lot => {
+      if(lot.status === 'active' && lot.endTime && Date.now() >= lot.endTime){
+        lot.status = 'sold';
+      }
+    });
+
+    if(category) filtered = filtered.filter(l => l.category === category);
+    if(status) filtered = filtered.filter(l => l.status === status);
+
+    renderLots(filtered);
+  }
+
+  function renderLots(lotsToRender) {
+    lotsList.innerHTML = '';
+
+    if(lotsToRender.length === 0){
+      lotsList.textContent = 'Лоты не найдены';
+      return;
+    }
+
+    lotsToRender.forEach(lot => {
+      const highestBid = lot.bids.length ? Math.max(...lot.bids.map(b => b.amount)) : lot.price;
+      const remainingMs = lot.endTime ? lot.endTime - Date.now() : null;
+
+      const div = document.createElement('div');
+      div.className = 'lot';
+
+      div.innerHTML = `
+        <b>${lot.title}</b><br/>
+        Категория: ${lot.category}<br/>
+        Начальная цена: ${lot.price} сом<br/>
+        Текущая ставка: ${highestBid} сом<br/>
+        Статус: <span id="status${lot.id}">${lot.status}</span><br/>
+        ${lot.status === 'active' && remainingMs > 0 ? `
+          До окончания: <span id="timer${lot.id}">${Math.floor(remainingMs/60000)}м ${Math.floor((remainingMs/1000)%60)}с</span><br/>
+          <input type="number" id="bidAmount${lot.id}" placeholder="Ваша ставка" min="${highestBid + 1}" style="max-width: 150px;"/>
+          <button onclick="placeBid(${lot.id})">Сделать ставку</button><br/>
+        ` : ''}
+        <details>
+          <summary>История ставок (${lot.bids.length})</summary>
+          <ul>
+            ${lot.bids.map(b => `<li>${b.user}: ${b.amount} сом (${new Date(b.time).toLocaleString()})</li>`).join('')}
+          </ul>
+        </details>
+        ${currentUser.role === 'admin' ? `
+          <button onclick="deleteLot(${lot.id})">Удалить</button>
+        ` : ''}
+      `;
+
+      lotsList.appendChild(div);
+    });
+  }
+
+  function placeBid(lotId) {
+    const input = document.getElementById(`bidAmount${lotId}`);
+    if(!input) return alert('Поле для ставки не найдено!');
+    const bidAmount = parseFloat(input.value);
+    if(isNaN(bidAmount)) return alert('Введите корректную ставку');
+
+    const lot = lots.find(l => l.id === lotId);
+    if(!lot) return alert('Лот не найден');
+    if(lot.status !== 'active') return alert('Аукцион по этому лоту закрыт');
+
+    const highestBid = lot.bids.length ? Math.max(...lot.bids.map(b => b.amount)) : lot.price;
+    if(bidAmount <= highestBid) return alert(`Ставка должна быть больше текущей (${highestBid} сом)`);
+
+    lot.bids.push({ user: currentUser.username, amount: bidAmount, time: Date.now() });
+    input.value = '';
+    alert('Ставка принята');
+    applyFilters(); // Обновляем отображение, чтобы показать новую ставку
+  }
+
+  function deleteLot(id) {
+    if(confirm('Удалить этот лот?')){
+      lots = lots.filter(l => l.id !== id);
+      applyFilters();
+    }
+  }
+
+  // Таймер обновления каждую секунду
+  setInterval(() => {
+    if(currentUser){
+      lots.forEach(lot => {
+        if(lot.status === 'active' && lot.endTime){
+          if(Date.now() >= lot.endTime){
+            lot.status = 'sold';
+          }
+          const timerSpan = document.getElementById(`timer${lot.id}`);
+          const statusSpan = document.getElementById(`status${lot.id}`);
+          if(timerSpan){
+            let remainingMs = lot.endTime - Date.now();
+            if(remainingMs <= 0){
+              timerSpan.textContent = 'Аукцион окончен';
+              if(statusSpan) statusSpan.textContent = 'sold';
+            } else {
+              timerSpan.textContent = `${Math.floor(remainingMs/60000)}м ${Math.floor((remainingMs/1000)%60)}с`;
+            }
+          }
+        }
+      });
+    }
+  }, 1000);
+setInterval(updateTimers, 1000);
+</script>
+
+</body>
+</html>
