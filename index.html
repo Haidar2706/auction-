@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Аукцион</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="loginPage">
+  <h2>Вход</h2>
+  <div class="error" id="loginError"></div>
+  <input type="text" id="loginUsername" placeholder="Логин" />
+  <input type="password" id="loginPassword" placeholder="Пароль" />
+  <button id="loginBtn">Войти</button>
+  <p>Тест: admin/admin или user/user</p>
+</div>
+
+<div id="mainPage" class="hidden">
+  <button id="logoutBtn">Выйти</button>
+  <p>Привет, <span id="currentUser"></span>!</p>
+
+  <div id="lotsList"></div>
+
+  <div id="adminPanel" class="hidden">
+    <h3>Добавить лот</h3>
+    <hr/>
+    <h3>JSON данные</h3>
+    <button onclick="saveToLocalStorage()">💽 Сохранить в LocalStorage</button>
+    <button onclick="loadFromLocalStorage()">📥 Загрузить из LocalStorage</button><br/><br/>
+
+    <button onclick="downloadJSON()">⬇️ Скачать JSON</button><br/><br/>
+
+   <label>
+    📤 Загрузить JSON:
+     <input type="file" accept="application/json" onchange="uploadJSONFile(event)">
+   </label>
+
+    <form id="addLotForm">
+      <input type="text" id="newLotTitle" placeholder="Название" required /><br/>
+      <input type="text" id="newLotCategory" placeholder="Категория" required /><br/>
+      <input type="number" id="newLotPrice" placeholder="Цена" required /><br/>
+      <select id="newLotStatus">
+        <option value="active">Активный</option>
+        <option value="sold">Продан</option>
+      </select><br/>
+      <button type="submit">Добавить</button>
+    </form>
+  </div>
+</div>
+
+<script src="auction.js"></script>
+</body>
+</html>
